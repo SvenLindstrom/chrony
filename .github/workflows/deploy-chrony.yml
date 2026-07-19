@@ -41,7 +41,7 @@ jobs:
 
       - name: Deploy Chrony
         run: |
-          curl --faile-with-body \
+          curl --fail-with-body \
              -X POST \
              "${{ vars.DEPLOY_URL }}/deploy/chrony" \
              -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \
