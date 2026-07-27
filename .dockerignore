@@ -1,0 +1,8 @@
+.git
+.venv
+.github
+compose*
+chrony-cli
+.env
+.gitignore
+.dockerignore

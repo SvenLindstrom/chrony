@@ -2,19 +2,24 @@ import psycopg
 from psycopg.rows import class_row
 from pydantic import BaseModel
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 
-class Work_session(BaseModel):
+class WorkSession(BaseModel):
     id: UUID
     started_at: datetime
     ended_at: datetime | None
 
 
-def get_active_session(conn: psycopg.Connection) -> Work_session | None:
+class WorkDayDB(BaseModel):
+    work_date: date
+    total_worked: timedelta
+
+
+def get_active_session(conn: psycopg.Connection) -> WorkSession | None:
     quary = "SELECT * from work_sessions WHERE ended_at IS NULL"
 
-    with conn.cursor(row_factory=class_row(Work_session)) as cur:
+    with conn.cursor(row_factory=class_row(WorkSession)) as cur:
 
         cur.execute(quary)
         return cur.fetchone()
@@ -35,18 +40,51 @@ def create_session(conn: psycopg.Connection):
         cur.execute(quary)
 
 
-def get_todays_total(conn: psycopg.Connection) -> timedelta:
+def get_sessions_for_period(
+    start_date, end_date, conn: psycopg.Connection
+) -> list[WorkSession]:
+    quary = """SELECT * from work_sessions
+        WHERE started_at >= %(start_date)s
+        and started_at < %(end_date)s
+    """
+
+    with conn.cursor(row_factory=class_row(WorkSession)) as cur:
+        cur.execute(quary, {"start_date": start_date, "end_date": end_date})
+        return cur.fetchall()
+
+
+def get_hourse_for_period(
+    start_date, end_date, conn: psycopg.Connection
+) -> list[WorkDayDB]:
+    quary = """
+        SELECT started_at::date AS work_date,
+        COALESCE(SUM(COALESCE(ended_at, NOW()) - started_at),
+        INTERVAL '0'
+        ) AS total_worked
+        FROM work_sessions
+        WHERE started_at >= %(start_date)s
+        and started_at < %(end_date)s
+        GROUP BY started_at::date
+        ORDER BY work_date
+    """
+
+    with conn.cursor(row_factory=class_row(WorkDayDB)) as cur:
+        cur.execute(quary, {"start_date": start_date, "end_date": end_date})
+        return cur.fetchall()
+
+
+def get_total_for_period(start_date, end_date, conn: psycopg.Connection) -> timedelta:
     quary = """
         SELECT COALESCE(SUM(COALESCE(ended_at, NOW()) - started_at),
         INTERVAL '0'
         )
         FROM work_sessions
-        WHERE started_at >= CURRENT_DATE
-        and started_at < CURRENT_DATE + INTERVAL '1 day'
-    """
+        WHERE started_at >= %(start_date)s
+        and started_at < %(end_date)s
+        """
 
     with conn.cursor() as cur:
-        cur.execute(quary)
+        cur.execute(quary, {"start_date": start_date, "end_date": end_date})
         delta = cur.fetchone()
         assert delta is not None
         return delta[0]
