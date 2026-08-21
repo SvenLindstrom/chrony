@@ -1,9 +1,18 @@
 from datetime import date, datetime, time, timedelta
+import os
 
 import model
 
 import psycopg
 from pydantic import BaseModel
+
+
+def get_fallback_time():
+    time_str = os.environ.get("FALLBACK_TIME", "17:00").split(":")
+    if len(time_str) != 2:
+        raise Exception("Failed to parse fallback time")
+    hours, minutes = [int(i) for i in time_str]
+    return hours, minutes
 
 
 class Duration(BaseModel):
@@ -59,6 +68,19 @@ def toggle_session(conn: psycopg.Connection):
     if session is None:
         model.create_session(conn)
     else:
+        if session.started_at.date() != date.today():
+            hours, minutes = get_fallback_time()
+            fallback_end = datetime.combine(
+                session.started_at.date(),
+                time(hours, minutes),
+                tzinfo=session.started_at.tzinfo,
+            )
+            model.update_active_session(
+                conn,
+                session.id,
+                fallback_end,
+            )
+            return
         model.update_active_session(conn, session.id)
 
 

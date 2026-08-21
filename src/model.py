@@ -25,12 +25,19 @@ def get_active_session(conn: psycopg.Connection) -> WorkSession | None:
         return cur.fetchone()
 
 
-def update_active_session(conn: psycopg.Connection, session_id: UUID):
+def update_active_session(
+    conn: psycopg.Connection,
+    session_id: UUID,
+    end_time: datetime | None = None,
+):
 
-    quary = "UPDATE work_sessions SET ended_at = NOW() WHERE id = %(id)s"
+    if end_time is None:
+        end_time = datetime.now().astimezone()
+
+    quary = "UPDATE work_sessions SET ended_at = %(end_time)s WHERE id = %(id)s"
 
     with conn.cursor() as cur:
-        cur.execute(quary, {"id": session_id})
+        cur.execute(quary, {"end_time": end_time, "id": session_id})
 
 
 def create_session(conn: psycopg.Connection):
