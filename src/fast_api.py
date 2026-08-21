@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 
 Conn = Annotated[psycopg.Connection, Depends(get_connection)]
 
+VERSION = "v-1.1"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,3 +46,8 @@ def get_period(start_date: date, end_date: date, conn: Conn):
     print(start_date)
     print(end_date)
     return service.get_period(start_date, end_date, conn)
+
+
+@app.get("/version")
+def get_version():
+    return VERSION
