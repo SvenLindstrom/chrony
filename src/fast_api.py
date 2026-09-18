@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 Conn = Annotated[psycopg.Connection, Depends(get_connection)]
 
-VERSION = "v-1.2"
+VERSION = "v-1.2.1"
 
 
 @asynccontextmanager
@@ -41,7 +41,7 @@ def get_current_state(conn: Conn):
     return service.get_state(conn)
 
 
-@app.post("/period")
+@app.get("/period")
 def get_period(
     conn: Conn, start_date: date | None = None, end_date: date | None = None
 ):
