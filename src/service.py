@@ -1,8 +1,7 @@
 from datetime import date, datetime, time, timedelta
 import os
-
 import model
-
+from dateutil.relativedelta import relativedelta
 import psycopg
 from pydantic import BaseModel
 
@@ -108,7 +107,24 @@ def get_state(conn: psycopg.Connection):
     return {"working": working, "time": duration}
 
 
+def format_dates():
+    period_cutoff = int(os.environ.get("PERIOD_RESET", 20))
+    today = date.today()
+
+    end_at = today.replace(day=period_cutoff)
+    if today.day > period_cutoff:
+        end_at = end_at + relativedelta(months=1)
+
+    start_at = end_at - relativedelta(months=1)
+    return start_at, end_at
+
+
 def get_period(start_date, end_date, conn: psycopg.Connection):
+    if start_date is None or end_date is None:
+        start_date, end_date = format_dates()
+
+    print(start_date)
+    print(end_date)
     days = model.get_hourse_for_period(start_date, end_date, conn)
     days_response = [WorkDayResponse.from_db(k) for k in days]
     duration = get_hourse_for_period(start_date, end_date, conn)
